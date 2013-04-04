@@ -1,4 +1,0 @@
-[zonefiles]
-# The diff script will cd into this directory to make sure and $INCLUDES
-# are done with the right path context.
-dir_path=

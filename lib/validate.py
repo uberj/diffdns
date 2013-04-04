@@ -1,15 +1,14 @@
 import subprocess
-import sys
 import os
-import pdb
 import itertools
 from dns import zone
-from dns.zone import NoSOA
 
 
 def resolve(name, ns, rdclass="all"):
-    proc = subprocess.Popen(["dig", "@{0}".format(ns), name, rdclass,
-        "+short"], stdout=subprocess.PIPE)
+    proc = subprocess.Popen(
+        ["dig", "@{0}".format(ns), name, rdclass, "+short"],
+        stdout=subprocess.PIPE
+    )
     x = proc.communicate()[0]
     x = x.split('\n')
     x = '\n'.join(sorted(x))
@@ -32,14 +31,15 @@ def check_rdtype(zone, nss, rdtype):
             res = resolve(name, ns, rdclass=rdtype)
             if res.strip('\n').find("unused") != -1:
                 continue
-            results.append(res)
+            results.append(res.lower())
         if len(set(results)) > 1:  # set() removes duplicates
             print "------------------------------------"
             print "Found differences for {0} {1}:".format(rdtype, name)
 
             for ns, result in itertools.izip(nss, results):
-                print "{0} returned:\n-->\n{1}\n<--".format(ns,
-                        result.strip('\n'))
+                print "{0} returned:\n-->\n{1}\n<--".format(
+                    ns, result.strip('\n')
+                )
 
 
 def diff_nameservers(nss, zone_name, mzone):

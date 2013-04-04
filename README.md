@@ -24,3 +24,7 @@ If you just want to test one zone use this form.
 ```
 python diffdns.py --ns1 dev1.foo.com --ns2 ns1.foo.com --zone-name dc1.foo.com --file ~/path/to/zone/file
 ```
+
+```
+python diffdns.py --ns1 ns1.mozilla.com --ns2 ns2.mozilla.com --named-path ~/var/named/ --view-file ~/var/named/config/view.public --second-named-path ~/testing/var/named/ --second-view-file ~/testing/var/named/config/view.public
+```

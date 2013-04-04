@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [[ ${EUID} != 0 ]] ; then
+    echo "Run this as root"
+    exit 1
+fi
+
+NS1= # Production ns
+NAMED_PATH1= # Path to active DNS data
+VIEW1= # View file
+
+NS2= # Testing ns
+NAMED_PATH2=  # The one with the patch
+VIEW2= #view file
+
+
+DIFFDNS= # path to diffdns.py
+PYTHONPATH=.:PYTHONPATH
+
+/etc/init.d/named restart
+cd $BIND_DIR
+python $DIFFDNS --ns1 $NS1 --ns2 $NS2 --named-path $NAMED_PATH1 --view-file $VIEW1 --second-named-path $NAMED_PATH2 --second-view-file $VIEW2
+cd -
