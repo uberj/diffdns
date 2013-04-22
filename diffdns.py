@@ -11,7 +11,8 @@ from lib.paths import swap_paths
 
 
 # Add zones that should not be diffed here
-black_list = ['weave.mozilla.com', 'discovershiretoko.org']
+black_list = [
+]
 
 
 def diff_zones(ns1, ns2, zone_file, named_path):
@@ -21,11 +22,11 @@ def diff_zones(ns1, ns2, zone_file, named_path):
             continue
         if zone_name in black_list:
             continue
-        handle_zone([ns1, ns2], zone_name, zone_meta, named_path)
+        handle_zone(ns1, ns2, zone_name, zone_meta, named_path)
 
 
 def diff_zone(ns1, ns2, zone_name, zone_file, named_path):
-    handle_zone([ns1, ns2], zone_name, {'file': zone_file}, named_path)
+    handle_zone(ns1, ns2, zone_name, {'file': zone_file}, named_path)
 
 
 def diff_view(ns1, ns2, view_file1, named_path1, named_path2=None,
@@ -42,7 +43,7 @@ def diff_view(ns1, ns2, view_file1, named_path1, named_path2=None,
             continue
         if zone_name in black_list:
             continue
-        handle_zone([ns1, ns2], zone_name, zone_meta, named_path1)
+        handle_zone(ns1, ns2, zone_name, zone_meta, named_path1)
 
 
 def diff_view_contents(named_path1, named_path2, view_file1, view_file2):
@@ -118,13 +119,13 @@ def get_zone_data(zone_name, filepath, dirpath):
     return mzone
 
 
-def handle_zone(nss, zone_name, zone_meta, ZONE_PATH):
+def handle_zone(ns1, ns2, zone_name, zone_meta, ZONE_PATH):
     if not zone_meta['file']:
         print "No zone file for {0}".format(zone_name)
         return
     print "== Diffing {0}. ({1})".format(zone_name, zone_meta['file'])
     mzone = get_zone_data(zone_name, zone_meta['file'], ZONE_PATH)
-    diff_nameservers(nss, zone_name, mzone)
+    diff_nameservers(ns1, ns2, zone_name, mzone)
 
 
 if __name__ == "__main__":
@@ -132,8 +133,36 @@ if __name__ == "__main__":
     parser.add_argument('--ns1', required=True, help="The first nameserver to"
                         " diff", type=str)
 
+    parser.add_argument(
+        '--ns1-knows-more', dest='ns1_knows_more', required=False, default=False,
+        help="If ns1 is allowed to know more than ns2 add this flag. It will "
+        "ignore differences when ns1 sees records that ns2 does not",
+        action='store_true'
+    )
+
+    parser.add_argument(
+        '--ns1-port', dest='ns1_port', required=False, default='53',
+        help="The first nameservers DNS port", type=str
+    )
+
+    parser.add_argument(
+        '--ns1-tcp', dest='ns1_tcp', required=False,
+        help="Use tcp for queries to ns1", action='store_true',
+        default=False
+    )
+
     parser.add_argument('--ns2', required=True, help="The second nameserver "
                         " to diff")
+
+    parser.add_argument(
+        '--ns2-port', dest='ns2_port', required=False, default='53',
+        help="The second nameservers DNS port", type=str
+    )
+    parser.add_argument(
+        '--ns2-tcp', dest='ns2_tcp', required=False,
+        help="Use tcp for queries to ns2", action='store_true',
+        default=False
+    )
 
     parser.add_argument('--file', dest="data_file", help="A single zone file."
                         " Use this option with the --zone option", type=str)
@@ -186,15 +215,38 @@ if __name__ == "__main__":
         print "Speciefy second-named-path when using second-view-file"
         sys.exit(1)
 
+    class Nameserver(object):
+        def __str__(self):
+            return "{0}://{1}:{2}".format(self.proto, self.name, self.port)
+        def __repr__(self):
+            return str(self)
+
+    def configure_ns(nas, nsname):
+        ns = Nameserver()
+        setattr(ns, 'name', getattr(nas, nsname))
+        setattr(ns, 'port', getattr(nas, nsname + '_port', '53'))
+        setattr(ns, 'proto',
+            'tcp' if getattr(nas, nsname + '_tcp', False) else 'notcp'
+        )
+        return ns
+
+    ns1 = configure_ns(nas, 'ns1')
+    ns2 = configure_ns(nas, 'ns2')
+
+    if nas.ns1_knows_more:
+        ns1.knows_more = True
+
     if nas.view_file1:
         diff_view(
-            nas.ns1, nas.ns2, nas.view_file1, nas.named_path1,
+            ns1, ns2, nas.view_file1, nas.named_path1,
             named_path2=nas.named_path2, view_file2=nas.view_file2
         )
     elif nas.zones_file:
-        diff_zones(nas.ns1, nas.ns2, nas.zones_file, nas.named_path1)
+        diff_zones(
+            ns1, ns2, nas.zones_file, nas.named_path1,
+        )
     elif nas.zone_name:
         diff_zone(
-            nas.ns1, nas.ns2, nas.zone_name, nas.data_file, nas.named_path1
+            ns1, ns2, nas.zone_name, nas.data_file, nas.named_path1
         )
     print "Done diffing!"
