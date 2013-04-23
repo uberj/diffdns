@@ -217,7 +217,10 @@ if __name__ == "__main__":
 
     class Nameserver(object):
         def __str__(self):
-            return "{0}://{1}:{2}".format(self.proto, self.name, self.port)
+            return "{0}://{1}:{2}".format(
+                'udp' if self.proto == 'notcp' else 'tcp',
+                self.name, self.port
+            )
         def __repr__(self):
             return str(self)
 
