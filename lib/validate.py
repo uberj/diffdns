@@ -33,8 +33,9 @@ def check_rdtype(zone, ns1, ns2, rdtype):
             if res.strip('\n').find("unused") != -1:
                 continue
             results.append(res.lower())
-        if ns1.knows_more and results[0] and not results[1]:
+        if results and ns1.knows_more and results[0] and not results[1]:
             continue
+
         if len(set(results)) > 1:  # set() removes duplicates
             print "------------------------------------"
             print "Found differences for {0} {1}:".format(rdtype, name)

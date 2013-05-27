@@ -1,0 +1,10 @@
+# A list of file prefixes that will be ignored by the diffdns when a view file is specified
+file_prefix_bl = [
+]
+
+# A list of zone names that will be skipped by the diffdns when a view file is specified
+zone_name_bl = [
+]
+
+# Ignore slave statements (there probably isn't a zone file to parse)
+ignore_slave = True

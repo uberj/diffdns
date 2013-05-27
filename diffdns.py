@@ -8,11 +8,7 @@ from iscpy.iscpy_dns.named_importer_lib import MakeNamedDict
 import argparse
 from lib.validate import diff_nameservers
 from lib.paths import swap_paths
-
-
-# Add zones that should not be diffed here
-black_list = [
-]
+import blacklist
 
 
 def diff_zones(ns1, ns2, zone_file, named_path):
@@ -20,13 +16,26 @@ def diff_zones(ns1, ns2, zone_file, named_path):
     for zone_name, zone_meta in zones['orphan_zones'].iteritems():
         if zone_meta['type'] != 'master':
             continue
-        if zone_name in black_list:
+        if is_bl(zone_name, zone_meta['file'], zone_meta['type']):
             continue
         handle_zone(ns1, ns2, zone_name, zone_meta, named_path)
 
 
 def diff_zone(ns1, ns2, zone_name, zone_file, named_path):
     handle_zone(ns1, ns2, zone_name, {'file': zone_file}, named_path)
+
+
+def is_bl(zone_name, zone_file, zone_type):
+    if zone_name in blacklist.zone_name_bl:
+        return True
+
+    for prefix in blacklist.file_prefix_bl:
+        if zone_file.startswith(prefix):
+            return True
+    if zone_type == 'slave' and blacklist.ignore_slave:
+        return True
+
+    return False
 
 
 def diff_view(ns1, ns2, view_file1, named_path1, named_path2=None,
@@ -39,9 +48,7 @@ def diff_view(ns1, ns2, view_file1, named_path1, named_path2=None,
     zones = parse_view_config_data(named_path1, view_file1)
     print "Using files under {0} as the datasource.".format(named_path1)
     for zone_name, zone_meta in zones.iteritems():
-        if zone_meta['type'] != 'master':
-            continue
-        if zone_name in black_list:
+        if is_bl(zone_name, zone_meta['file'], zone_meta['type']):
             continue
         handle_zone(ns1, ns2, zone_name, zone_meta, named_path1)
 
@@ -134,10 +141,10 @@ if __name__ == "__main__":
                         " diff", type=str)
 
     parser.add_argument(
-        '--ns1-knows-more', dest='ns1_knows_more', required=False, default=False,
+        '--ns1-knows-more', dest='ns1_knows_more', required=False,
+        default=False, action='store_true',
         help="If ns1 is allowed to know more than ns2 add this flag. It will "
         "ignore differences when ns1 sees records that ns2 does not",
-        action='store_true'
     )
 
     parser.add_argument(
@@ -221,6 +228,7 @@ if __name__ == "__main__":
                 'udp' if self.proto == 'notcp' else 'tcp',
                 self.name, self.port
             )
+
         def __repr__(self):
             return str(self)
 
@@ -228,7 +236,8 @@ if __name__ == "__main__":
         ns = Nameserver()
         setattr(ns, 'name', getattr(nas, nsname))
         setattr(ns, 'port', getattr(nas, nsname + '_port', '53'))
-        setattr(ns, 'proto',
+        setattr(
+            ns, 'proto',
             'tcp' if getattr(nas, nsname + '_tcp', False) else 'notcp'
         )
         return ns
@@ -236,8 +245,7 @@ if __name__ == "__main__":
     ns1 = configure_ns(nas, 'ns1')
     ns2 = configure_ns(nas, 'ns2')
 
-    if nas.ns1_knows_more:
-        ns1.knows_more = True
+    ns1.knows_more = True if nas.ns1_knows_more else False
 
     if nas.view_file1:
         diff_view(
