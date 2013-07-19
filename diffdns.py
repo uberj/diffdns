@@ -207,7 +207,12 @@ if __name__ == "__main__":
         "statically"
     )
 
-    nas = parser.parse_args(sys.argv[1:])
+    try:
+        nas = parser.parse_args(sys.argv[1:])
+    except:
+        with open('/tmp/debug', 'w+') as fd:
+            fd.write(str(sys.argv))
+        sys.exit(1)
 
     if nas.zone_name and not nas.data_file:
         print ("When using the --zone-name option you must specify the "

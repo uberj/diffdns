@@ -6,9 +6,12 @@ from dns import zone
 
 def resolve(name, ns, ns_port='53', proto='tcp', rdclass="all"):
     command = ["dig", "+" + ns.proto, "-p", ns.port, "@{0}".format(ns.name), name, rdclass, "+short"]
+    if rdclass.lower() == 'NS':
+        return ""
     proc = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE
+        ' '.join(command),
+        stdout=subprocess.PIPE,
+        shell=True
     )
     x = proc.communicate()[0]
     x = x.split('\n')
@@ -33,7 +36,8 @@ def check_rdtype(zone, ns1, ns2, rdtype):
             if res.strip('\n').find("unused") != -1:
                 continue
             results.append(res.lower())
-        if results and ns1.knows_more and results[0] and not results[1]:
+        if (results and ns1.knows_more and len(results) == 2 and results[0] and
+                not results[1]):
             continue
 
         if len(set(results)) > 1:  # set() removes duplicates
@@ -49,8 +53,8 @@ def check_rdtype(zone, ns1, ns2, rdtype):
 def diff_nameservers(ns1, ns2, zone_name, mzone):
     if zone_name.endswith('in-addr.arpa'):
         # Don't check for MX's
-        rdtypes = ["A", "AAAA", "CNAME", "NS", "SRV", "TXT", "PTR"]
+        rdtypes = ["A", "AAAA", "CNAME", "NS", "SRV", "TXT", "PTR", "MX"]
     else:
-        rdtypes = ["A", "AAAA", "CNAME", "NS", "MX", "SRV", "TXT", "PTR"]
+        rdtypes = ["A", "AAAA", "CNAME", "MX", "SRV", "TXT", "PTR", "NS"]
     for rdtype in rdtypes:
         check_rdtype(mzone, ns1, ns2, rdtype)
